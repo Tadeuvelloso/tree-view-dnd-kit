@@ -1,10 +1,5 @@
 export type {
   TreeItem,
   FlattenedTreeItem,
-  FlatTreeItem,
-  TreeData,
-  FlatTreeData,
-  TreeViewConfig,
-  TreeEventHandlers,
-  TreeOperations
+  TreeData
 } from './TreeItem'; 

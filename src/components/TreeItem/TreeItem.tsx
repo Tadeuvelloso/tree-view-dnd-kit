@@ -15,7 +15,7 @@ export interface Props extends Omit<React.HTMLAttributes<HTMLLIElement>, 'id'> {
   indicator?: boolean;
   indentationWidth: number;
   isDraggable?: boolean;
-  isLocked?: boolean;
+
   customIcon?: React.ReactNode;
   style?: React.CSSProperties;
   value: string;
@@ -42,7 +42,6 @@ export const TreeItem = React.forwardRef<HTMLDivElement, Props>(
       wrapperRef,
       customIcon,
       isDraggable = true,
-      isLocked,
       ...props
     },
     ref
@@ -76,6 +75,8 @@ export const TreeItem = React.forwardRef<HTMLDivElement, Props>(
       );
     };
 
+
+    
     return (
       <li
         className={classNames(
@@ -105,9 +106,6 @@ export const TreeItem = React.forwardRef<HTMLDivElement, Props>(
         >
           <div className={styles.IconContainer}>
             {renderIcon()}
-            {isLocked && (
-              <span className={styles.LockBadge}>🔒</span>
-            )}
           </div>
           <span className={styles.Text}>{value}</span>
           {canCollapse && (
@@ -116,9 +114,10 @@ export const TreeItem = React.forwardRef<HTMLDivElement, Props>(
               onClick={handleCollapseClick}
               data-collapse-button="true"
             >
-              {ghost ? '▼' : '▶'}
+              {collapsed ? '▼' : '▶'}
             </Action>
           )}
+       
         </div>
       </li>
     );

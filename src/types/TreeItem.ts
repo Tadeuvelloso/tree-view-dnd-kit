@@ -18,35 +18,4 @@ export interface FlattenedTreeItem extends TreeItem {
   path: string;
 }
 
-export interface FlatTreeItem {
-  id: string;
-  title: string;
-  parent: string | null;
-  order: number;
-  disabled?: boolean;
-  icon?: string;
-  metadata?: Record<string, any>;
-}
-
-export type TreeData = TreeItem[];
-export type FlatTreeData = FlatTreeItem[];
-
-export interface TreeViewConfig {
-  allowReorder?: boolean;
-  allowCollapse?: boolean;
-  indentationWidth?: number;
-  showIcons?: boolean;
-  maxDepth?: number;
-  multiSelect?: boolean;
-}
-
-export interface TreeEventHandlers {
-  onItemMove?: (draggedId: UniqueIdentifier, targetId: UniqueIdentifier, position: 'before' | 'after' | 'inside') => void;
-  onItemSelect?: (id: UniqueIdentifier, selected: boolean) => void;
-  onItemToggle?: (id: UniqueIdentifier, collapsed: boolean) => void;
-}
-
-export interface TreeOperations {
-  loadItems: () => Promise<FlatTreeData>;
-  saveItems: (items: FlatTreeData) => Promise<void>;
-} 
+export type TreeData = TreeItem[]; 

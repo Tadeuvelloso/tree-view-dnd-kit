@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import  {useEffect, useMemo, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {
   type Announcements,
@@ -78,16 +78,6 @@ interface Props {
   canDrop?: (source: any, target: any) => boolean;
   canDrag?: (item: any) => boolean;
   canChangeParent?: boolean;
-  renderItem?: (item: any, options: RenderItemOptions) => React.ReactNode;
-}
-
-interface RenderItemOptions {
-  depth: number;
-  isCollapsed: boolean;
-  hasChildren: boolean;
-  isDraggable: boolean;
-  isBeingDragged: boolean;
-  onCollapse?: () => void;
 }
 
 export function SortableTree({
@@ -103,10 +93,6 @@ export function SortableTree({
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
   const [offsetLeft, setOffsetLeft] = useState(0);
-  const [currentPosition, setCurrentPosition] = useState<{
-    parentId: UniqueIdentifier | null;
-    overId: UniqueIdentifier;
-  } | null>(null);
 
   const flattenedItems = useMemo(() => {
     const flattenedTree = flattenTree(items);
@@ -127,6 +113,7 @@ export function SortableTree({
 
     return filteredItems;
   }, [activeId, items, maxDepth]);
+
   const projected = activeId && overId ? getProjection(
     flattenedItems,
     activeId,
@@ -134,13 +121,16 @@ export function SortableTree({
     offsetLeft,
     indentationWidth
   ) : null;
+
   const sensorContext: SensorContext = useRef({
     items: flattenedItems,
     offset: offsetLeft,
   });
+
   const [coordinateGetter] = useState(() =>
     sortableTreeKeyboardCoordinates(sensorContext, indicator, indentationWidth)
   );
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -156,24 +146,6 @@ export function SortableTree({
   const activeItem = activeId
     ? flattenedItems.find(({id}) => id === activeId)
     : null;
-
-  function isItemLocked(item: any): boolean {
-    if (!item) return false;
-    
-    if (item.metadata?.editable === false) {
-      return true;
-    }
-    
-    if (item.metadata?.owner === 'system' || item.metadata?.owner === 'admin') {
-      return true;
-    }
-    
-    if (item.metadata?.type === 'system') {
-      return true;
-    }
-    
-    return false;
-  }
 
   function findOriginalItem(items: TreeItems, targetId: UniqueIdentifier): any {
     for (const item of items) {
@@ -202,13 +174,13 @@ export function SortableTree({
       return `Picked up ${active.id}.`;
     },
     onDragMove({active, over}) {
-      return getMovementAnnouncement('onDragMove', active.id, over?.id);
+      return `${active.id} was moved over ${over?.id}.`;
     },
     onDragOver({active, over}) {
-      return getMovementAnnouncement('onDragOver', active.id, over?.id);
+      return `${active.id} was moved over ${over?.id}.`;
     },
     onDragEnd({active, over}) {
-      return getMovementAnnouncement('onDragEnd', active.id, over?.id);
+      return `${active.id} was dropped over ${over?.id}.`;
     },
     onDragCancel({active}) {
       return `Moving was cancelled. ${active.id} was dropped in its original position.`;
@@ -233,20 +205,18 @@ export function SortableTree({
           const hasOriginalChildren = originalItem && originalItem.children.length > 0;
           
           const isDraggable = canDrag ? canDrag(originalItem) : true;
-          const isLocked = !isDraggable || isItemLocked(originalItem);
           
           return (
             <SortableTreeItem
               key={id}
               id={id}
               value={originalItem.title}
-              depth={depth}
+              depth={id === activeId && projected ? projected.depth : depth}
               indentationWidth={indentationWidth}
-              indicator={indicator}
+              indicator={indicator && id === overId && activeId !== null}
               collapsed={Boolean(collapsed)}
               childCount={originalItem?.children.length || 0}
               isDraggable={isDraggable}
-              isLocked={isLocked}
               onCollapse={
                 hasOriginalChildren
                   ? () => handleCollapse(id)
@@ -268,11 +238,6 @@ export function SortableTree({
                 childCount={getChildCount(items, activeId) + 1}
                 value={findOriginalItem(items, activeId)?.title || activeId.toString()}
                 indentationWidth={indentationWidth}
-                isLocked={(() => {
-                  const originalItem = findOriginalItem(items, activeId);
-                  const isDraggable = canDrag ? canDrag(originalItem) : true;
-                  return !isDraggable || isItemLocked(originalItem);
-                })()}
               />
             ) : null}
           </DragOverlay>,
@@ -285,25 +250,13 @@ export function SortableTree({
   function handleDragStart({active: {id: activeId}}: DragStartEvent) {
     if (canDrag) {
       const sourceItem = findOriginalItem(items, activeId);
-      
       if (!canDrag(sourceItem)) {
         return;
       }
     }
     
     setActiveId(activeId);
-
     setOverId(activeId);
-
-    const activeItem = flattenedItems.find(({id}) => id === activeId);
-
-    if (activeItem) {
-      setCurrentPosition({
-        parentId: activeItem.parentId,
-        overId: activeId,
-      });
-    }
-
     document.body.style.setProperty('cursor', 'grabbing');
   }
 
@@ -362,68 +315,7 @@ export function SortableTree({
     setOverId(null);
     setActiveId(null);
     setOffsetLeft(0);
-    setCurrentPosition(null);
-
     document.body.style.setProperty('cursor', '');
-  }
-
-  function getMovementAnnouncement(
-    eventName: string,
-    activeId: UniqueIdentifier,
-    overId?: UniqueIdentifier
-  ) {
-    if (overId && projected) {
-      if (eventName !== 'onDragEnd') {
-        if (
-          currentPosition &&
-          projected.parentId === currentPosition.parentId &&
-          overId === currentPosition.overId
-        ) {
-          return;
-        } else {
-          setCurrentPosition({
-            parentId: projected.parentId,
-            overId,
-          });
-        }
-      }
-
-      const clonedItems: FlattenedItem[] = JSON.parse(
-        JSON.stringify(flattenTree(items))
-      );
-      const overIndex = clonedItems.findIndex(({id}) => id === overId);
-      const activeIndex = clonedItems.findIndex(({id}) => id === activeId);
-      const sortedItems = arrayMove(clonedItems, activeIndex, overIndex);
-
-      const previousItem = sortedItems[overIndex - 1];
-
-      let announcement;
-      const movedVerb = eventName === 'onDragEnd' ? 'dropped' : 'moved';
-      const nestedVerb = eventName === 'onDragEnd' ? 'dropped' : 'nested';
-
-      if (!previousItem) {
-        const nextItem = sortedItems[overIndex + 1];
-        announcement = `${activeId} was ${movedVerb} before ${nextItem.id}.`;
-      } else {
-        if (projected.depth > previousItem.depth) {
-          announcement = `${activeId} was ${nestedVerb} under ${previousItem.id}.`;
-        } else {
-          let previousSibling: FlattenedItem | undefined = previousItem;
-          while (previousSibling && projected.depth < previousSibling.depth) {
-            const parentId: UniqueIdentifier | null = previousSibling.parentId;
-            previousSibling = sortedItems.find(({id}) => id === parentId);
-          }
-
-          if (previousSibling) {
-            announcement = `${activeId} was ${movedVerb} after ${previousSibling.id}.`;
-          }
-        }
-      }
-
-      return announcement;
-    }
-
-    return;
   }
 }
 
